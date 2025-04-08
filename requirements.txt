@@ -8,3 +8,8 @@ dash-bootstrap-components==1.5.0
 pyproj==3.6.1
 fiona==1.9.6
 shapely==2.0.1
+python-dateutil==2.8.2
+matplotlib==3.8.2
+seaborn==0.13.0
+scipy==1.11.4
+gunicorn==20.1.0
