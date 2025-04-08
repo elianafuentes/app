@@ -14,7 +14,7 @@ app.title = "Dashboard GNCV"
 
 # Cargar datos
 try:
-    # Ajusta esta ruta según donde tengas tu archivo
+    # Ajustar ruta para usar path relativo
     csv_path = "Consulta_Precios_Promedio_de_Gas_Natural_Comprimido_Vehicular__AUTOMATIZADO__20250314.csv"
     df = pd.read_csv(csv_path, encoding="latin1")
     
@@ -61,18 +61,35 @@ except Exception as e:
 
 
 try:
+    # Buscar todas las variantes posibles del nombre del archivo shapefile
+    # Considerar mayúsculas/minúsculas y diferentes directorios
     possible_paths = [
-        "/Users/elianafuentes/Documents/app/COLOMBIA/COLOMBIA.SHP",  # Tu ruta original
+        # Formato minúscula (como aparece en GitHub)
         "COLOMBIA/COLOMBIA.shp",
+        # Formato mayúscula (como se menciona en el código original)
+        "COLOMBIA/COLOMBIA.SHP",
+        # Rutas relativas alternativas
         os.path.join(os.path.dirname(__file__), "COLOMBIA", "COLOMBIA.shp"),
         os.path.join(os.path.dirname(__file__), "COLOMBIA", "COLOMBIA.SHP"),
-        os.path.join(os.path.dirname(__file__), "COLOMBIA", "COLOMBIA.SHP")
+        # Rutas absolutas de desarrollo
+        "/app/COLOMBIA/COLOMBIA.shp",
+        "/app/COLOMBIA/COLOMBIA.SHP"
     ]
+    
+    # Intentar imprimir los contenidos del directorio COLOMBIA para debug
+    try:
+        if os.path.exists("COLOMBIA"):
+            print("Contenido del directorio COLOMBIA:")
+            for file in os.listdir("COLOMBIA"):
+                print(f" - {file}")
+    except Exception as e:
+        print(f"No se pudo listar el directorio COLOMBIA: {e}")
 
     # Buscar el archivo en rutas posibles
     shapefile_path = None
     for path in possible_paths:
         if os.path.exists(path):
+            print(f"Shapefile encontrado en: {path}")
             shapefile_path = path
             break
 
@@ -80,7 +97,9 @@ try:
         raise FileNotFoundError("No se encontró el archivo shapefile en ninguna de las rutas especificadas.")
 
     # Cargar el shapefile
+    print(f"Intentando cargar shapefile desde: {shapefile_path}")
     gdf_colombia = gpd.read_file(shapefile_path, encoding="latin1")
+    print(f"Shapefile cargado exitosamente. Columnas: {gdf_colombia.columns.tolist()}")
 
     departamento_geo_col = 'DPTO_CNMBR'  # Ajusta según el nombre de la columna en tu shapefile
 
@@ -162,6 +181,7 @@ try:
     fig_mapa3.update_layout(margin={"r":0,"t":50,"l":0,"b":0}, template="plotly_white")
     
     mapas_disponibles = True
+    print("Mapas creados exitosamente")
 except FileNotFoundError as e:
     print(f"Error al cargar el archivo shapefile: {e}")
     mapas_disponibles = False
@@ -176,6 +196,7 @@ tabs = []
 
 # Añadir pestañas de mapas si están disponibles
 if mapas_disponibles:
+    print("Agregando pestañas de mapas al dashboard")
     tabs.extend([
         dcc.Tab(label="📍 Mapa por Departamento", children=[
             dcc.Graph(figure=fig_mapa1)
@@ -187,9 +208,12 @@ if mapas_disponibles:
             dcc.Graph(figure=fig_mapa3)
         ])
     ])
+else:
+    print("Mapas no disponibles - No se agregaron pestañas de mapas")
 
 # Añadir pestañas de gráficos estadísticos si están disponibles
 if graficos_disponibles:
+    print("Agregando pestañas de gráficos estadísticos al dashboard")
     tabs.extend([
         dcc.Tab(label='Histograma', children=[dcc.Graph(figure=fig_hist)]),
         dcc.Tab(label='Boxplot por Departamento', children=[dcc.Graph(figure=fig_box)]),
@@ -200,6 +224,8 @@ if graficos_disponibles:
         dcc.Tab(label='Top 10 Municipios', children=[dcc.Graph(figure=fig_top_municipios)]),
         dcc.Tab(label='Matriz de Correlación', children=[dcc.Graph(figure=fig_corr)])
     ])
+else:
+    print("Gráficos estadísticos no disponibles - No se agregaron pestañas de gráficos")
 
 # Layout final
 if len(tabs) > 0:
@@ -211,15 +237,23 @@ if len(tabs) > 0:
         ]),
         dcc.Tabs(tabs)
     ])
+    print("Dashboard creado con éxito con", len(tabs), "pestañas")
 else:
     # Mostrar mensaje de error si no hay datos disponibles
     app.layout = html.Div([
         html.H1("Error al cargar el Dashboard", style={"textAlign": "center", "color": "red"}),
         html.P("No se pudieron cargar los datos necesarios. Verifica que los archivos estén en las rutas correctas.", 
-               style={"textAlign": "center"})
+               style={"textAlign": "center"}),
+        html.Div([
+            html.Pre("Este es un panel de administración para diagnosticar problemas:"),
+            html.Ul([
+                html.Li("Archivo CSV: " + ("✅ Encontrado" if graficos_disponibles else "❌ No encontrado")),
+                html.Li("Archivos shapefile: " + ("✅ Encontrados" if mapas_disponibles else "❌ No encontrados"))
+            ])
+        ], style={"margin": "20px auto", "maxWidth": "600px", "border": "1px solid #ddd", "padding": "20px", "backgroundColor": "#f9f9f9"})
     ])
+    print("Se mostró pantalla de error por falta de datos")
     
-
 
 # Ejecutar el servidor
 if __name__ == '__main__':
