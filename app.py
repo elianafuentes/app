@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import dash_leaflet as dl
 import geopandas as gpd
+import os  # Import os module
 
 # Inicializar app
 app = dash.Dash(__name__)
@@ -58,14 +59,31 @@ except Exception as e:
     print(f"Error al cargar datos o crear gráficos: {e}")
     graficos_disponibles = False
 
-# Intentar cargar datos para mapas
+
 try:
-    # Cargar el shapefile de Colombia
-    shapefile_path = "/Users/elianafuentes/Documents/app/COLOMBIA/COLOMBIA.shp"  # Ajusta esta ruta según la ubicación en tu servidor
+    possible_paths = [
+        "/Users/elianafuentes/Documents/app/COLOMBIA/COLOMBIA.SHP",  # Tu ruta original
+        "COLOMBIA/COLOMBIA.shp",
+        os.path.join(os.path.dirname(__file__), "COLOMBIA", "COLOMBIA.shp"),
+        os.path.join(os.path.dirname(__file__), "COLOMBIA", "COLOMBIA.SHP"),
+        os.path.join(os.path.dirname(__file__), "COLOMBIA", "COLOMBIA.SHP")
+    ]
+
+    # Buscar el archivo en rutas posibles
+    shapefile_path = None
+    for path in possible_paths:
+        if os.path.exists(path):
+            shapefile_path = path
+            break
+
+    if shapefile_path is None:
+        raise FileNotFoundError("No se encontró el archivo shapefile en ninguna de las rutas especificadas.")
+
+    # Cargar el shapefile
     gdf_colombia = gpd.read_file(shapefile_path, encoding="latin1")
-    
+
     departamento_geo_col = 'DPTO_CNMBR'  # Ajusta según el nombre de la columna en tu shapefile
-    
+
     # Normalización de nombres de departamentos para los mapas
     df[departamento_col] = df[departamento_col].str.upper().str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8')
     gdf_colombia[departamento_geo_col] = gdf_colombia[departamento_geo_col].str.upper().str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8')
@@ -144,10 +162,14 @@ try:
     fig_mapa3.update_layout(margin={"r":0,"t":50,"l":0,"b":0}, template="plotly_white")
     
     mapas_disponibles = True
-    
+except FileNotFoundError as e:
+    print(f"Error al cargar el archivo shapefile: {e}")
+    mapas_disponibles = False
 except Exception as e:
     print(f"Error al crear mapas: {e}")
     mapas_disponibles = False
+finally:
+    print("Finalización del bloque try-except para mapas.")
 
 # Construir pestañas
 tabs = []
@@ -184,7 +206,7 @@ if len(tabs) > 0:
     app.layout = html.Div([
         html.H1("📈 Análisis de Precios de GNCV en Colombia", style={"textAlign": "center"}),
         html.Div([
-            html.P("Dashboard completo que combina análisis geoespacial y estadístico de precios de GNCV", 
+            html.P("Análisis geoespacial y estadístico de precios de GNCV", 
                   style={"textAlign": "center", "fontStyle": "italic"})
         ]),
         dcc.Tabs(tabs)
@@ -196,6 +218,8 @@ else:
         html.P("No se pudieron cargar los datos necesarios. Verifica que los archivos estén en las rutas correctas.", 
                style={"textAlign": "center"})
     ])
+    
+
 
 # Ejecutar el servidor
 if __name__ == '__main__':
